@@ -1,10 +1,22 @@
 package Storage
 
-import "os"
+import (
+	"Crawler/src/Resource"
+	"os"
+)
 
+func NewStorage(storageType StorageType,storagePath string) Storage  {
+	switch storageType {
+	case LocalStorageType:
+		return NewLocalStorage(storagePath)
+	}
+
+
+	return nil
+}
 type Storage interface {
-	read(sourceString string,translatedLanguage string)string
-	write(sourceString string,translatedString string,translatedLanguage string)string
+	Read(sourceString string,translatedLanguage string)Resource.ResourceItem
+	Write(item *Resource.ResourceItem)bool
 }
 
 func isExists(path string) (bool, error) {
