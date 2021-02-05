@@ -1,17 +1,11 @@
 package main
 
-import (
-	"encoding/json"
-	"fmt"
-)
+import crawler2 "Crawler/src/crawler"
 
 type hhh struct {
 	Name string
 }
 func main()  {
-	tt := hhh{Name: "iii"}
-	byte ,_:=json.Marshal(tt)
-	fmt.Printf("%s",byte)
-	var gg hhh
-	json.Unmarshal(byte,&gg)
+	crawler := crawler2.NewCrawler(crawler2.BaiduTranslator,1)
+	crawler.Start()
 }
