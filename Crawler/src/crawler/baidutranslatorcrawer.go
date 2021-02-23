@@ -52,7 +52,7 @@ func (b BaiduTranslatorCrawler) BuildRequest(word string) {
 	rep ,_:= http.NewRequest(http.MethodPost,"https://fanyi.baidu.com/sug",strings.NewReader(string(bodyJson)))
 
 	rep.Header = map[string][]string{"User-Agent": {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36"},
-		"Connection":{"keep-alive"},"Content-Type":{"application/x-www-form-urlencoded; charset=UTF-8"},"Accept":{"application/json, text/javascript, */*; q=0.01"},"Accept-Encoding":{"gzip, deflate, br"}}
+		"Connection":{"keep-alive"},"Content-Type":{"application/json; charset=UTF-8"},"Accept":{"application/json, text/javascript, */*; q=0.01"},"Accept-Encoding":{"gzip, deflate, br"}}
 	resp ,_:=client.Do(rep)
 	reader,_ :=switchContentEncoding(resp)
 
@@ -60,7 +60,7 @@ func (b BaiduTranslatorCrawler) BuildRequest(word string) {
 
 	reader.Read(data)
 	defer resp.Body.Close()
-	fmt.Printf("response is :%s",string(data))
+	fmt.Printf("response is :%s \r\n",string(data))
 }
 
 func switchContentEncoding(res *http.Response) (bodyReader io.Reader, err error) {
