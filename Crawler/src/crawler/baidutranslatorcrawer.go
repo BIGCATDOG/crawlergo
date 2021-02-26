@@ -1,8 +1,14 @@
 package crawler
 
 import (
+	"Crawler/src/Resource"
+	"Crawler/src/Storage"
+	"Crawler/src/TaskQueue"
+	"bytes"
 	"compress/flate"
 	"compress/gzip"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,21 +17,23 @@ import (
 )
 
 func NewBaiduTranslatorCrawler(crawlerPeriodTimeMS uint32) *BaiduTranslatorCrawler {
-	return &BaiduTranslatorCrawler{crawlerPeriodTimeMS: crawlerPeriodTimeMS};
+	return &BaiduTranslatorCrawler{crawlerPeriodTimeMS: crawlerPeriodTimeMS,storage: Storage.NewStorage(Storage.LocalStorageType,""),threadPool: TaskQueue.NewThreadTool(6)};
 }
 type BaiduTranslatorCrawler struct {
 	crawlerPeriodTimeMS uint32
+	storage Storage.Storage
+	threadPool TaskQueue.ThreadPoolInterface
 }
 
-func (b BaiduTranslatorCrawler) Start() {
+func (b *BaiduTranslatorCrawler) Start() {
       b.GenerateWords()
 }
 
-func (b BaiduTranslatorCrawler) Stop() {
+func (b *BaiduTranslatorCrawler) Stop() {
 	panic("implement me")
 }
 
-func (b BaiduTranslatorCrawler) GenerateWords() {
+func (b *BaiduTranslatorCrawler) GenerateWords() {
 	var charByte []byte = []byte{'a','b','c','d','e'}
     var genWords[]byte = make([]byte,5)
 	for i:=0;i<5;i++{
@@ -38,7 +46,11 @@ func (b BaiduTranslatorCrawler) GenerateWords() {
 						genWords[2]=charByte[k]
 						genWords[3]=charByte[l]
 						genWords[4]=charByte[m]
-						b.BuildRequest(string(genWords))
+						b.threadPool.AddTask(func() {
+							b.BuildRequest(string(genWords))
+						})
+
+
 					}
 				}
 			}
@@ -46,7 +58,7 @@ func (b BaiduTranslatorCrawler) GenerateWords() {
 	}
 }
 
-func (b BaiduTranslatorCrawler) BuildRequest(word string) {
+func (b *BaiduTranslatorCrawler) BuildRequest(word string) {
 	client := http.Client{}
 	bodyJson,_:= json.Marshal( map[string]string{"kw":word})
 	rep ,_:= http.NewRequest(http.MethodPost,"https://fanyi.baidu.com/sug",strings.NewReader(string(bodyJson)))
@@ -60,7 +72,10 @@ func (b BaiduTranslatorCrawler) BuildRequest(word string) {
 
 	reader.Read(data)
 	defer resp.Body.Close()
-	fmt.Printf("response is :%s \r\n",string(data))
+
+	b.storage.Write(&Resource.ResourceItem{SourceString: word,TranslatedString: "hhh",TranslatedLanguage: "zh-cn"})
+
+	fmt.Println("response is "+string(data)+"\r\n")
 }
 
 func switchContentEncoding(res *http.Response) (bodyReader io.Reader, err error) {
@@ -71,6 +86,18 @@ func switchContentEncoding(res *http.Response) (bodyReader io.Reader, err error)
 		bodyReader = flate.NewReader(res.Body)
 	default:
 		bodyReader = res.Body
+	}
+	return
+}
+
+func u2s(form string) (to string, err error) {
+	bs, err := hex.DecodeString(strings.Replace(form, `\u`, ``, -1))
+	if err != nil {
+		return
+	}
+	for i, bl, br, r := 0, len(bs), bytes.NewReader(bs), uint16(0); i < bl; i += 2 {
+		binary.Read(br, binary.BigEndian, &r)
+		to += string(r)
 	}
 	return
 }

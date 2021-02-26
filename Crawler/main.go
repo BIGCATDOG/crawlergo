@@ -1,6 +1,8 @@
 package main
 
-import crawler2 "Crawler/src/crawler"
+import (
+	crawler2 "Crawler/src/crawler"
+)
 
 type hhh struct {
 	Name string
