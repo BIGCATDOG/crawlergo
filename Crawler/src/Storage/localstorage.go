@@ -40,5 +40,9 @@ func (l *LocalStorage) Write(item *Resource.ResourceItem) bool {
 	 return false
 }
 
+func add( a int,b int) int{
+	return a+b+1
+}
+
 
 
