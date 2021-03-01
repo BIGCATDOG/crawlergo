@@ -1,33 +1,34 @@
 package crawler
 
 import (
-	"Crawler/src/Resource"
 	"Crawler/src/Storage"
 	"Crawler/src/TaskQueue"
+	"Crawler/src/consumer"
 	"bytes"
-	"compress/flate"
-	"compress/gzip"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"strings"
 )
 
 func NewBaiduTranslatorCrawler(crawlerPeriodTimeMS uint32) *BaiduTranslatorCrawler {
-	return &BaiduTranslatorCrawler{crawlerPeriodTimeMS: crawlerPeriodTimeMS, storage: Storage.NewStorage(Storage.LocalStorageType, ""), threadPool: TaskQueue.NewThreadTool(6)}
+	return &BaiduTranslatorCrawler{crawlerPeriodTimeMS: crawlerPeriodTimeMS, storage: Storage.NewStorage(Storage.LocalStorageType, ""), threadPool: TaskQueue.NewThreadTool(6),taskChan: make(chan *http.Request,6)}
 }
 
 type BaiduTranslatorCrawler struct {
 	crawlerPeriodTimeMS uint32
 	storage             Storage.Storage
 	threadPool          TaskQueue.ThreadPoolInterface
+	taskChan chan *http.Request
+	consumer consumer.ConsumerInterface
 }
 
 func (b *BaiduTranslatorCrawler) Start() {
+	b.consumer = consumer.NewConsumer(6,b.taskChan)
+	b.consumer.Work()
 	b.GenerateWords()
+
 }
 
 func (b *BaiduTranslatorCrawler) Stop() {
@@ -47,9 +48,8 @@ func (b *BaiduTranslatorCrawler) GenerateWords() {
 						genWords[2] = charByte[k]
 						genWords[3] = charByte[l]
 						genWords[4] = charByte[m]
-						b.threadPool.AddTask(func() {
-							b.BuildRequest(string(genWords))
-						})
+						b.BuildRequest(string(genWords))
+
 
 					}
 				}
@@ -59,36 +59,14 @@ func (b *BaiduTranslatorCrawler) GenerateWords() {
 }
 
 func (b *BaiduTranslatorCrawler) BuildRequest(word string) {
-	client := http.Client{}
 	bodyJson, _ := json.Marshal(map[string]string{"kw": word})
-	rep, _ := http.NewRequest(http.MethodPost, "https://fanyi.baidu.com/sug", strings.NewReader(string(bodyJson)))
-
-	rep.Header = map[string][]string{"User-Agent": {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36"},
+	req, _ := http.NewRequest(http.MethodPost, "https://fanyi.baidu.com/sug", strings.NewReader(string(bodyJson)))
+	req.Header = map[string][]string{"User-Agent": {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36"},
 		"Connection": {"keep-alive"}, "Content-Type": {"application/json; charset=UTF-8"}, "Accept": {"application/json, text/javascript, */*; q=0.01"}, "Accept-Encoding": {"gzip, deflate, br"}}
-	resp, _ := client.Do(rep)
-	reader, _ := switchContentEncoding(resp)
-
-	data := make([]byte, resp.ContentLength)
-
-	reader.Read(data)
-	defer resp.Body.Close()
-
-	b.storage.Write(&Resource.ResourceItem{SourceString: word, TranslatedString: "hhh", TranslatedLanguage: "zh-cn"})
-
-	fmt.Println("response is " + string(data) + "\r\n")
+	b.taskChan<-req
 }
 
-func switchContentEncoding(res *http.Response) (bodyReader io.Reader, err error) {
-	switch res.Header.Get("Content-Encoding") {
-	case "gzip":
-		bodyReader, err = gzip.NewReader(res.Body)
-	case "deflate":
-		bodyReader = flate.NewReader(res.Body)
-	default:
-		bodyReader = res.Body
-	}
-	return
-}
+
 
 func u2s(form string) (to string, err error) {
 	bs, err := hex.DecodeString(strings.Replace(form, `\u`, ``, -1))
