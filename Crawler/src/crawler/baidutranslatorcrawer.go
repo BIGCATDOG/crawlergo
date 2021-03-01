@@ -17,16 +17,17 @@ import (
 )
 
 func NewBaiduTranslatorCrawler(crawlerPeriodTimeMS uint32) *BaiduTranslatorCrawler {
-	return &BaiduTranslatorCrawler{crawlerPeriodTimeMS: crawlerPeriodTimeMS,storage: Storage.NewStorage(Storage.LocalStorageType,""),threadPool: TaskQueue.NewThreadTool(6)};
+	return &BaiduTranslatorCrawler{crawlerPeriodTimeMS: crawlerPeriodTimeMS, storage: Storage.NewStorage(Storage.LocalStorageType, ""), threadPool: TaskQueue.NewThreadTool(6)}
 }
+
 type BaiduTranslatorCrawler struct {
 	crawlerPeriodTimeMS uint32
-	storage Storage.Storage
-	threadPool TaskQueue.ThreadPoolInterface
+	storage             Storage.Storage
+	threadPool          TaskQueue.ThreadPoolInterface
 }
 
 func (b *BaiduTranslatorCrawler) Start() {
-      b.GenerateWords()
+	b.GenerateWords()
 }
 
 func (b *BaiduTranslatorCrawler) Stop() {
@@ -34,22 +35,21 @@ func (b *BaiduTranslatorCrawler) Stop() {
 }
 
 func (b *BaiduTranslatorCrawler) GenerateWords() {
-	var charByte []byte = []byte{'a','b','c','d','e'}
-    var genWords[]byte = make([]byte,5)
-	for i:=0;i<5;i++{
-		for j:=0;j<5;j++{
-			for k:=0;k<5;k++{
-				for l:=0;l<5;l++{
-					for m:=0;m<5;m++{
-                       genWords[0]=charByte[i]
-						genWords[1]=charByte[j]
-						genWords[2]=charByte[k]
-						genWords[3]=charByte[l]
-						genWords[4]=charByte[m]
+	var charByte []byte = []byte{'a', 'b', 'c', 'd', 'e'}
+	var genWords []byte = make([]byte, 5)
+	for i := 0; i < 5; i++ {
+		for j := 0; j < 5; j++ {
+			for k := 0; k < 5; k++ {
+				for l := 0; l < 5; l++ {
+					for m := 0; m < 5; m++ {
+						genWords[0] = charByte[i]
+						genWords[1] = charByte[j]
+						genWords[2] = charByte[k]
+						genWords[3] = charByte[l]
+						genWords[4] = charByte[m]
 						b.threadPool.AddTask(func() {
 							b.BuildRequest(string(genWords))
 						})
-
 
 					}
 				}
@@ -60,22 +60,22 @@ func (b *BaiduTranslatorCrawler) GenerateWords() {
 
 func (b *BaiduTranslatorCrawler) BuildRequest(word string) {
 	client := http.Client{}
-	bodyJson,_:= json.Marshal( map[string]string{"kw":word})
-	rep ,_:= http.NewRequest(http.MethodPost,"https://fanyi.baidu.com/sug",strings.NewReader(string(bodyJson)))
+	bodyJson, _ := json.Marshal(map[string]string{"kw": word})
+	rep, _ := http.NewRequest(http.MethodPost, "https://fanyi.baidu.com/sug", strings.NewReader(string(bodyJson)))
 
 	rep.Header = map[string][]string{"User-Agent": {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36"},
-		"Connection":{"keep-alive"},"Content-Type":{"application/json; charset=UTF-8"},"Accept":{"application/json, text/javascript, */*; q=0.01"},"Accept-Encoding":{"gzip, deflate, br"}}
-	resp ,_:=client.Do(rep)
-	reader,_ :=switchContentEncoding(resp)
+		"Connection": {"keep-alive"}, "Content-Type": {"application/json; charset=UTF-8"}, "Accept": {"application/json, text/javascript, */*; q=0.01"}, "Accept-Encoding": {"gzip, deflate, br"}}
+	resp, _ := client.Do(rep)
+	reader, _ := switchContentEncoding(resp)
 
-	data := make([]byte,resp.ContentLength)
+	data := make([]byte, resp.ContentLength)
 
 	reader.Read(data)
 	defer resp.Body.Close()
 
-	b.storage.Write(&Resource.ResourceItem{SourceString: word,TranslatedString: "hhh",TranslatedLanguage: "zh-cn"})
+	b.storage.Write(&Resource.ResourceItem{SourceString: word, TranslatedString: "hhh", TranslatedLanguage: "zh-cn"})
 
-	fmt.Println("response is "+string(data)+"\r\n")
+	fmt.Println("response is " + string(data) + "\r\n")
 }
 
 func switchContentEncoding(res *http.Response) (bodyReader io.Reader, err error) {
